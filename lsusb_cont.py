@@ -1,8 +1,10 @@
 #! /usr/bin/env python
 # -*- coding:utf-8 -*-
+from yardimci import Metin
+from yardimci import Dosya
 import sefim
-import difflib
-import os
+
+from datetime import datetime
 
 """
     Amaç: lsusb komutu çıktısının daha önceki turda üretilen çıktı ile
@@ -20,44 +22,31 @@ import os
                 isimlendir komut çıktısını eski_lsusb dosyası olarak kaydet.
                 Farkı bildir!!
 """
+lsusb_eskiD = "lsusb.txt"
 
-eski_lsusb_dosyasi = "lsusb.txt"
-yeni_lsusb_dosyasi = "lsusb_yeni.txt"
-mesaj = ""
-konu = "Usb arayüz değişikliği"
-print 40 * "*"
+lsusb_eski = Dosya.oku(lsusb_eskiD)
+if not lsusb_eski:
+    lsusb_eski = sefim.runner("lsusb")[0]
+    Dosya.yaz(lsusb_eskiD, lsusb_eski)
+    print "Eski dosya bulunamadı"
+else:
+    lsusb_yeni = sefim.runner("lsusb")[0]
 
-try:
-    with open(eski_lsusb_dosyasi, 'r') as eski:
-        kontrol = eski.read()
-except IOError as e:
-    print eski_lsusb_dosyasi + " dosyası bulunamadı"
-    out, err = sefim.runner('lsusb')
-    with open(eski_lsusb_dosyasi, 'w') as eski:
-        eski.write(out)
-    with open(eski_lsusb_dosyasi, 'r') as eski:
-        kontrol = eski.read()
+    eklenen = Metin.eklenen(lsusb_eski, lsusb_yeni)
+    cikarilan = Metin.cikarilan(lsusb_eski, lsusb_yeni)
 
-
-try:
-    out, err = sefim.runner('lsusb')
-
-    kontrol = kontrol.splitlines()
-    out = out.splitlines()
-
-    if difflib.unified_diff(kontrol, out):
-        for l in list(difflib.unified_diff(kontrol, out))[2:]:
-            if l[0] == '+':
-                mesaj += "Eklendi: " + l
-            elif l[0] == '-':
-                mesaj += "Çıkarıldı: " + l
-
-        os.rename(eski_lsusb_dosyasi, eski_lsusb_dosyasi + "umut")
-        with open(eski_lsusb_dosyasi, "w") as eski:
-            eski.write(out)
-
-except Exception as e:
-    print e
-
-
-sefim.send_mail(konu, mesaj)
+    eklenen = "\n".join(list(eklenen)[1:])
+    cikarilan = "\n".join(list(cikarilan)[1:])
+    if eklenen or cikarilan:
+        mesaj = """USB değişikliği
+        Eklenen:
+        %s
+        Çıkarılan:
+        %s
+        """ % (eklenen, cikarilan)
+        lsusb_eskiDx = lsusb_eskiD.split(".")
+        tarih = datetime.now().strftime("%Y%m%d%H%M%S")
+        lsusb_yeniD = lsusb_eskiDx[0] + "." + tarih + "." + lsusb_eskiDx[1]
+        Dosya.yaz(lsusb_yeniD, lsusb_eski)
+        Dosya.yaz(lsusb_eskiD, lsusb_yeni)
+        sefim.send_mail("USB değişiliği", mesaj)
