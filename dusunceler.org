@@ -1,0 +1,12 @@
+** parcalar 
+*** yonetim
+*** islev
+**** ozellikler
+     adi
+     gorevi
+**** fonksiyonlar
+     init
+     ana fonksiyon
+     yan foksiyonlar
+     cikti
+*** sonuc gosterimi

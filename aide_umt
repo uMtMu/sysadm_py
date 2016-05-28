@@ -1,0 +1,26 @@
+#!/bin/bash
+
+location=$(echo $HOSTNAME | cut -c 7-9 | tr '[:upper:]' '[:lower:]')
+if [ $location == rem2 ]
+then
+        from="From:alert@email.com"
+        mail_sender="/usr/sbin/ssmtp"
+else
+        from="From:alert@email.com"
+        mail_sender="/usr/sbin/sendmail"
+fi
+
+script_name=$(basename "$0")
+subject="Subject:($HOSTNAME)($script_name)Aide scan result"
+to="To:uc@email.com"
+body="$(/usr/bin/aide -c /etc/aide/aide.conf --check)"
+
+added=`echo "$body" | grep "Added files:" | head -n 1 | awk -F ':' '{print $2}' | sed -e 's/^[[:space:]]*//'`
+changed=`echo "$body" | grep "Changed files:" | head -n 1 | awk -F ':' '{print $2}' | sed -e 's/^[[:space:]]*//'`
+removed=`echo "$body" | grep "Removed files:" | head -n 1 | awk -F ':' '{print $2}' | sed -e 's/^[[:space:]]*//'`
+#email_content=`diff -e /var/log/aide/hourly/last_scan.log <(echo "$body")`
+subject="$subject (A:$added) (R:$removed) (C:$changed)"
+#echo -e "$to\n$from\n$subject\n$email_content" | $mail_sender -t
+echo -e "$to\n$from\n$subject\n$body" | $mail_sender -t
+echo -e "$body" > /var/log/aide/hourly/`/bin/date +%Y%m%d%H%M`.log
+echo -e "$body" > /var/log/aide/hourly/last_scan.log

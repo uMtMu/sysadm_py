@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# email subject
+SUBJECT="VIRUS DETECTED ON REMOTE!!!"
+# Email To ?
+EMAIL="email"
+# Log location
+LOG=/var/log/clamav/$(date +%Y%m%d)_hourly_scan.log
+
+echo "" >> $LOG
+echo "---------$(date +%H%M)-------" >> $LOG
+echo "" >> $LOG
+
+
+check_scan () {
+
+    # Check the last set of results. If there are any "Infected" counts that aren't zero, we have a problem.
+    if [ `tail -n 12 ${LOG}  | grep Infected | grep -v 0 | wc -l` != 0 ]
+    then
+        EMAILMESSAGE=`mktemp /tmp/virus-alert.XXXXX`
+        echo "To: ${EMAIL}" >>  ${EMAILMESSAGE}
+        echo "From: alert@email.com" >>  ${EMAILMESSAGE}
+        echo "Subject: ${SUBJECT}" >>  ${EMAILMESSAGE}
+        echo "Importance: High" >> ${EMAILMESSAGE}
+        echo "X-Priority: 1" >> ${EMAILMESSAGE}
+        echo "`tail -n 50 ${LOG}`" >> ${EMAILMESSAGE}
+        sendmail -t < ${EMAILMESSAGE}
+    fi
+
+}
+
+find / -not -wholename '/sys/*' -and -not -wholename '/proc/*' -and -not -wholename '/var/spool/postfix/*' -mmin -61 -type f -print0 | xargs -0 -r clamscan --exclude-dir=/var/spool/postfix/ --exclude-dir=/proc/ --exclude-dir=/sys/ --quiet --infected --log=${LOG}
+check_scan
+
+find / -not -wholename '/sys/*' -and -not -wholename '/proc/*' -and -not -wholename '/var/spool/postfix/*' -cmin -61 -type f -print0 | xargs -0 -r clamscan --exclude-dir=/var/spool/postfix/ --exclude-dir=/proc/ --exclude-dir=/sys/ --quiet --infected --log=${LOG}
+check_scan
+
+
+
